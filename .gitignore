@@ -155,8 +155,10 @@ Thumbs.db
 *.jks
 *.keystore
 
-# Root certificates folder (may contain sensitive CAs)
-root_certificates/
+# Allow root certificates folder structure but exclude actual certificates
+!root_certificates/
+!root_certificates/*/
+!root_certificates/*/*.md
 trusted_roots/
 
 # Signed XML files (may contain sensitive data)
