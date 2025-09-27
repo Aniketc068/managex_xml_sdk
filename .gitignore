@@ -145,20 +145,20 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Certificate files (security)
+# Certificate files (security) - but allow root certificates
 *.pfx
 *.p12
-*.pem
-*.crt
-*.cer
 *.key
 *.jks
 *.keystore
 
-# Allow root certificates folder structure but exclude actual certificates
+# Allow root certificates folder with actual certificate files for user convenience
 !root_certificates/
 !root_certificates/*/
 !root_certificates/*/*.md
+!root_certificates/*/*.pem
+!root_certificates/*/*.crt
+!root_certificates/*/*.cer
 trusted_roots/
 
 # Signed XML files (may contain sensitive data)

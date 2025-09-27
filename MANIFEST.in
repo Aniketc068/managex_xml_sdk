@@ -25,12 +25,12 @@ global-exclude .git*
 global-exclude *.so
 global-exclude *.egg-info
 
-# Include root certificates folder structure for user convenience
+# Include root certificates folder with certificate files for user convenience
 include root_certificates/README.md
-recursive-include root_certificates *.md
+recursive-include root_certificates *.md *.pem *.crt *.cer
 
-# Exclude sensitive certificate files but keep folder structure
-global-exclude *.pfx *.p12 *.pem *.crt *.cer *.key *.jks *.keystore
+# Exclude sensitive private key files and user certificates
+global-exclude *.pfx *.p12 *.key *.jks *.keystore
 global-exclude *_signed.xml
 global-exclude signed_*.xml
 global-exclude *.dll
