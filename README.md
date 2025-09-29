@@ -6,6 +6,11 @@
 
 A comprehensive Python SDK for digital certificate management and XML digital signing with enterprise-grade security and multi-platform support.
 
+## 📋 Latest Updates
+
+- ✅ **Complete OCSP Implementation**: Full OCSP certificate validation with real-time revocation checking
+- ✅ **Enhanced Security**: Comprehensive certificate chain validation and revocation checking via CRL and OCSP
+
 ## 🚀 Features
 
 - ✅ **Multi-platform Support**: Windows, Linux, macOS
