@@ -213,6 +213,16 @@ class WindowsStoreSigner:
                 cert_array_script += f'$certCollection.Add($cert{i})\n'
 
             ps_script = f'''
+# Hide PowerShell console window
+Add-Type -Name Window -Namespace Console -MemberDefinition '
+[DllImport("Kernel32.dll")]
+public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")]
+public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
+'
+$consolePtr = [Console.Window]::GetConsoleWindow()
+[Console.Window]::ShowWindow($consolePtr, 0)
+
 try {{
     Add-Type -AssemblyName System.Security
     Add-Type -AssemblyName System.Windows.Forms
@@ -264,11 +274,21 @@ try {{
             try:
                 print("[+] Opening certificate selection dialog...")
 
+                # Use subprocess with hidden window flags
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+
                 result = subprocess.run([
                     'powershell.exe',
+                    '-WindowStyle', 'Hidden',
+                    '-NoProfile',
+                    '-NonInteractive',
                     '-ExecutionPolicy', 'Bypass',
                     '-File', script_path
-                ], capture_output=True, text=True, timeout=120)
+                ], capture_output=True, text=True, timeout=120,
+                   creationflags=subprocess.CREATE_NO_WINDOW,
+                   startupinfo=startupinfo)
 
                 if result.returncode == 0:
                     if 'SELECTED_CERT:' in result.stdout:
