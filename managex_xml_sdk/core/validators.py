@@ -4,11 +4,13 @@ Certificate validation functionality
 
 import requests
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.x509.ocsp import OCSPRequestBuilder, OCSPCertStatus
+import base64
 
 from .certificate_manager import CertificateManager
 from ..models.certificate_models import ValidationConfig, CertificateFilter
@@ -309,6 +311,21 @@ class CertificateValidator:
             pass
         return None
 
+    def find_issuer_certificate(self, cert: x509.Certificate) -> Optional[x509.Certificate]:
+        """Find the issuer certificate for the given certificate"""
+        cert_aki = self.cert_manager.get_authority_key_identifier(cert)
+        trusted_roots = self.cert_manager.get_trusted_roots()
+
+        if not cert_aki:
+            return None
+
+        for root_cert in trusted_roots:
+            root_ski = self.cert_manager.get_subject_key_identifier(root_cert)
+            if root_ski and cert_aki == root_ski:
+                return root_cert
+
+        return None
+
     def check_certificate_revocation_ocsp(self, cert: x509.Certificate, issuer_cert: x509.Certificate = None) -> bool:
         """Check certificate revocation status via OCSP"""
         ocsp_url = self.get_ocsp_responder_url(cert)
@@ -318,10 +335,66 @@ class CertificateValidator:
 
         try:
             print(f"[+] Checking OCSP: {ocsp_url}")
-            # Note: Full OCSP implementation requires more complex logic
-            # This is a simplified check - you may need to implement full OCSP request/response handling
-            print("[WARNING] OCSP checking not fully implemented - assuming certificate is valid")
-            return True
+
+            # Find issuer certificate if not provided
+            if issuer_cert is None:
+                issuer_cert = self.find_issuer_certificate(cert)
+                if issuer_cert is None:
+                    print("[WARNING] Could not find issuer certificate for OCSP request")
+                    return True
+
+            # Build OCSP request
+            builder = OCSPRequestBuilder()
+            builder = builder.add_certificate(cert, issuer_cert, hashes.SHA1())
+            ocsp_request = builder.build()
+
+            # Prepare request data
+            request_data = ocsp_request.public_bytes(serialization.Encoding.DER)
+            headers = {
+                'Content-Type': 'application/ocsp-request',
+                'Content-Length': str(len(request_data))
+            }
+
+            # Send OCSP request
+            response = requests.post(
+                ocsp_url,
+                data=request_data,
+                headers=headers,
+                timeout=15
+            )
+
+            if response.status_code != 200:
+                print(f"[WARNING] OCSP responder returned status: {response.status_code}")
+                return True
+
+            # Parse OCSP response
+            try:
+                from cryptography.x509.ocsp import load_der_ocsp_response
+                ocsp_response = load_der_ocsp_response(response.content)
+
+                # Check response status
+                if ocsp_response.response_status != x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+                    print(f"[WARNING] OCSP response status: {ocsp_response.response_status}")
+                    return True
+
+                # Check certificate status
+                single_response = ocsp_response.single_extensions
+                cert_status = ocsp_response.certificate_status
+
+                if cert_status == OCSPCertStatus.GOOD:
+                    print("[+] OCSP status: Certificate is valid (GOOD)")
+                    return True
+                elif cert_status == OCSPCertStatus.REVOKED:
+                    print("[!] OCSP status: Certificate is REVOKED")
+                    return False
+                else:  # UNKNOWN
+                    print("[WARNING] OCSP status: Certificate status UNKNOWN")
+                    return True  # Assume valid if status is unknown
+
+            except Exception as parse_error:
+                print(f"[WARNING] Failed to parse OCSP response: {parse_error}")
+                return True
+
         except Exception as e:
             print(f"[WARNING] OCSP check failed: {e}")
             return True
