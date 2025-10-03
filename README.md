@@ -27,9 +27,18 @@ A comprehensive Python SDK for digital certificate management and XML digital si
 ## 📦 Installation
 
 ### From PyPI (Recommended)
+You can directly install and use the SDK via pip:
+
 ```bash
 pip install managex-xml-sdk
 ```
+
+For a specific version:
+```bash
+pip install managex-xml-sdk==1.0.0
+```
+
+📦 **PyPI Package**: [https://pypi.org/project/managex-xml-sdk/](https://pypi.org/project/managex-xml-sdk/)
 
 ### From Source
 ```bash
